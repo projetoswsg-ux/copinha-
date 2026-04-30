@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Crypto Football - World Season</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background-color: #0b0e11;
+            font-family: 'Inter', sans-serif;
+        }
+
+        #game-wrapper {
+            position: relative; width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+        }
+
+        canvas { width: 100%; height: 100%; display: block; }
+
+        /* TELA DE MAPA (ESTILO ORIGINAL) */
+        #map-screen {
+            position: absolute; inset: 0; z-index: 100;
+            background-image: 
+                linear-gradient(to bottom, rgba(11, 14, 17, 0.9), rgba(11, 14, 17, 0.4), rgba(11, 14, 17, 0.9)),
+                url('https://images.unsplash.com/photo-1522778119026-d647f0596c20?q=80&w=1000&auto=format&fit=crop');
+            background-size: cover; background-position: center;
+            display: flex; flex-direction: column; align-items: center;
+            overflow-y: auto; -webkit-overflow-scrolling: touch;
+        }
+
+        .journey-container {
+            position: relative; width: 90%; max-width: 400px;
+            min-height: 1650px; padding: 40px 0;
+            background: rgba(0, 0, 0, 0.6); margin-top: 20px;
+            border-radius: 40px; backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .tactic-line {
+            position: absolute; top: 0; left: 50%; width: 2px; height: 100%;
+            background: repeating-linear-gradient(to bottom, transparent, transparent 10px, rgba(240, 185, 11, 0.3) 10px, rgba(240, 185, 11, 0.3) 20px);
+            transform: translateX(-50%);
+        }
+
+        .level-wrapper { position: absolute; display: flex; flex-direction: column; align-items: center; width: 100px; z-index: 10; }
+        .level-node {
+            width: 70px; height: 70px; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 3px solid #fff; box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+            background-size: cover; background-position: center;
+        }
+
+        .level-current .level-node { transform: scale(1.2); border-color: #f0b90b; animation: pulse-gold 2s infinite; }
+        .level-locked .level-node { filter: grayscale(1) brightness(0.4); border-color: #333; }
+        @keyframes pulse-gold {
+            0% { box-shadow: 0 0 0 0 rgba(240, 185, 11, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(240, 185, 11, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(240, 185, 11, 0); }
+        }
+
+        .node-left { left: 10%; }
+        .node-center { left: 50%; transform: translateX(-50%); }
+        .node-right { right: 10%; }
+
+        /* UI DO JOGO */
+        .header-ui {
+            position: absolute; top: 0; width: 100%; padding: 40px 20px 10px;
+            display: flex; justify-content: space-between; z-index: 50;
+            background: linear-gradient(to bottom, rgba(11,14,17,0.9), transparent);
+        }
+        .ui-badge { background: rgba(0,0,0,0.6); padding: 5px 12px; border-radius: 20px; color: #f0b90b; font-weight: 900; font-size: 12px; border: 1px solid rgba(240,185,11,0.3); }
+
+        .overlay-screen {
+            position: absolute; inset: 0; z-index: 200; background: rgba(11,14,17,0.95);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px;
+        }
+
+        .btn-crypto { background: #f0b90b; color: #0b0e11; font-weight: 900; padding: 15px 40px; border-radius: 12px; text-transform: uppercase; letter-spacing: 1px; }
+        .btn-secondary { color: #f0b90b; font-weight: bold; margin-top: 15px; text-transform: uppercase; font-size: 12px; }
+
+        .swap-control {
+            position: absolute; bottom: 120px; right: 20px; z-index: 50;
+            background: rgba(0,0,0,0.8); border-radius: 50%; width: 65px; height: 65px;
+            display: flex; align-items: center; justify-content: center; border: 2px solid #f0b90b;
+        }
+
+        #bottom-menu {
+            position: absolute; bottom: 0; width: 100%; height: 80px;
+            background: #181a20; display: flex; justify-content: space-around; align-items: center;
+            border-top: 1px solid #2b2f36; padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .floating-score { position: absolute; color: #f0b90b; font-weight: 900; animation: floatUp 1s forwards; pointer-events: none; z-index: 1000; }
+        @keyframes floatUp { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-50px); opacity: 0; } }
+
+        #orientation-warning { display: none; position: fixed; inset: 0; background: #0b0e11; z-index: 9999; flex-direction: column; justify-content: center; align-items: center; color: #f0b90b; }
+        @media (orientation: landscape) and (max-height: 500px) { #orientation-warning { display: flex; } }
+        
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div id="orientation-warning">
+    <div class="text-5xl mb-4">📱</div>
+    <h2 class="text-xl font-bold uppercase italic">Use o modo Retrato</h2>
+</div>
+
+<div id="game-wrapper">
+    <!-- UI de Topo -->
+    <div class="header-ui hidden" id="game-ui">
+        <div class="ui-badge">PARTIDA <span id="ui-lvl">1</span></div>
+        <div class="ui-badge">GOLS: <span id="ui-score">0</span></div>
+    </div>
+
+    <!-- Tela do Mapa -->
+    <div id="map-screen">
+        <div class="z-20 text-center px-4 mt-10">
+            <h1 class="text-[#f0b90b] text-4xl font-black italic uppercase leading-none">TEMPORADA</h1>
+            <p class="text-white font-bold text-[10px] uppercase tracking-[0.4em] mt-2 opacity-80">Crypto Football Club</p>
+        </div>
+        <div class="journey-container" id="journey-map">
+            <div class="tactic-line"></div>
+        </div>
+        <button onclick="resetProgress()" class="my-10 text-white/20 text-[9px] uppercase tracking-widest font-bold">Reiniciar Carreira</button>
+    </div>
+
+    <!-- Telas de Vitória/Derrota -->
+    <div id="win-screen" class="overlay-screen hidden">
+        <div class="text-7xl mb-4">🏆</div>
+        <h2 class="text-3xl text-[#0ecb81] font-black italic mb-8 uppercase">VITÓRIA!</h2>
+        <button onclick="nextLevel()" class="btn-crypto">PRÓXIMO JOGO</button>
+        <button onclick="backToMap()" class="btn-secondary">VOLTAR AO MAPA</button>
+    </div>
+
+    <div id="lose-screen" class="overlay-screen hidden">
+        <div class="text-7xl mb-4">🟥</div>
+        <h2 class="text-3xl text-[#f6465d] font-black italic mb-2 uppercase">ELIMINADO</h2>
+        <p id="lose-reason" class="text-white/60 mb-8 text-xs uppercase"></p>
+        <button onclick="retryLevel()" class="btn-crypto">TENTAR NOVAMENTE</button>
+        <button onclick="backToMap()" class="btn-secondary">MAPA</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Controle de Troca de Bola -->
+    <div id="swap-btn" class="swap-control hidden" onclick="swapBubbles()">
+        <div id="next-preview" class="relative">
+            <canvas id="previewCanvas" width="50" height="50"></canvas>
+            <div id="ball-count" class="absolute -top-2 -right-2 bg-[#f0b90b] text-[#0b0e11] text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center border-2 border-[#0b0e11]">0</div>
+        </div>
+    </div>
+
+    <!-- Menu Inferior -->
+    <div id="bottom-menu" class="hidden">
+        <div class="text-white/40 flex flex-col items-center">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z" /></svg>
+            <span class="text-[8px] mt-1">MAPA</span>
+        </div>
+        <div class="text-[#f0b90b] flex flex-col items-center">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z" /></svg>
+            <span class="text-[8px] mt-1">JOGAR</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Configuração das Bandeiras (Original seu)
+    const MATCH_DATA = [
+        { name: "Brasil", code: "br" }, { name: "Argentina", code: "ar" },
+        { name: "França", code: "fr" }, { name: "Alemanha", code: "de" },
+        { name: "Espanha", code: "es" }, { name: "Itália", code: "it" },
+        { name: "Inglaterra", code: "gb" }, { name: "Portugal", code: "pt" },
+        { name: "Holanda", code: "nl" }, { name: "Bélgica", code: "be" },
+        { name: "Uruguai", code: "uy" }, { name: "Croácia", code: "hr" }
+    ];
+
+    // Engine de Áudio Minimalista
+    const AudioEngine = (() => {
+        let ctx = null;
+        const init = () => { if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); };
+        const play = (f, t, d, v=0.08) => {
+            if (!ctx || ctx.state === 'suspended') return;
+            const o = ctx.createOscillator(), g = ctx.createGain();
+            o.type = t; o.frequency.setValueAtTime(f, ctx.currentTime);
+            g.gain.setValueAtTime(v, ctx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + d);
+            o.connect(g); g.connect(ctx.destination);
+            o.start(); o.stop(ctx.currentTime + d);
+        };
+        return {
+            init,
+            shoot: () => play(400, 'sine', 0.1, 0.05),
+            pop: () => play(1200 + Math.random()*400, 'sine', 0.1, 0.1),
+            bounce: () => play(200, 'sine', 0.05, 0.03),
+            win: () => play(800, 'triangle', 0.5, 0.1),
+            lose: () => play(150, 'sawtooth', 0.5, 0.1)
+        };
+    })();
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const LOGICAL_WIDTH = 400;
+    const LOGICAL_HEIGHT = 700;
+    const RADIUS = 22;
+    const COLS = 8;
+    const ROWS = 16;
+
+    let userProgress = parseInt(localStorage.getItem('football_journey_lvl')) || 1;
+    let currentLevel = 1;
+    let gameState = 'MAP';
+    let score = 0;
+    let remainingBalls = 30;
+    let grid = [];
+    let fallingBubbles = [];
+    let currentBubble = null;
+    let nextCode = 'br';
+    let isShooting = false;
+    let rawAimAngle = -Math.PI/2;
+    let shakeAmount = 0;
+
+    // Cache de Imagens para Bandeiras
+    const flagImages = {};
+    MATCH_DATA.forEach(m => {
+        const img = new Image();
+        img.src = `https://flagcdn.com/w160/${m.code}.png`;
+        flagImages[m.code] = img;
+    });
+
+    function resize() {
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = window.innerWidth * dpr;
+        canvas.height = window.innerHeight * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    class Bubble {
+        constructor(x, y, code) {
+            this.x = x; this.y = y; this.code = code;
+            this.vx = 0; this.vy = 0;
+        }
+        draw(targetCtx = ctx, scale = 1) {
+            const r = (RADIUS - 1) * scale;
+            targetCtx.save();
+            targetCtx.translate(this.x, this.y);
+            
+            // Sombra
+            targetCtx.shadowColor = 'rgba(0,0,0,0.5)';
+            targetCtx.shadowBlur = 8;
+            targetCtx.shadowOffsetY = 4;
+
+            // Borda Branca (Estilo Bola)
+            targetCtx.beginPath();
+            targetCtx.arc(0, 0, r, 0, Math.PI*2);
+            targetCtx.fillStyle = '#fff';
+            targetCtx.fill();
+            targetCtx.strokeStyle = '#000';
+            targetCtx.lineWidth = 1;
+            targetCtx.stroke();
+
+            // Máscara para a bandeira
+            targetCtx.clip();
+            const img = flagImages[this.code];
+            if (img && img.complete) {
+                targetCtx.drawImage(img, -r, -r, r*2, r*2);
+            } else {
+                targetCtx.fillStyle = '#888';
+                targetCtx.fill();
+            }
+
+            // Brilho de Esfera
+            targetCtx.restore();
+            targetCtx.save();
+            targetCtx.translate(this.x, this.y);
+            const grad = targetCtx.createRadialGradient(-r*0.3, -r*0.3, 0, 0, 0, r);
+            grad.addColorStop(0, 'rgba(255,255,255,0.4)');
+            grad.addColorStop(1, 'rgba(0,0,0,0.2)');
+            targetCtx.beginPath();
+            targetCtx.arc(0, 0, r, 0, Math.PI*2);
+            targetCtx.fillStyle = grad;
+            targetCtx.fill();
+            targetCtx.restore();
+        }
+    }
+
+    // MAPA LOGIC
+    function renderMap() {
+        const mapContainer = document.getElementById('journey-map');
+        mapContainer.querySelectorAll('.level-wrapper').forEach(n => n.remove());
+
+        MATCH_DATA.forEach((match, index) => {
+            const levelNum = index + 1;
+            const wrapper = document.createElement('div');
+            
+            let statusClass = (levelNum < userProgress) ? 'level-unlocked' : 
+                              (levelNum === userProgress) ? 'level-current' : 'level-locked';
+
+            let posClass = (levelNum % 4 === 1) ? 'node-left' : 
+                           (levelNum % 4 === 3) ? 'node-right' : 'node-center';
+
+            wrapper.className = `level-wrapper ${statusClass} ${posClass}`;
+            wrapper.style.top = `${index * 130 + 40}px`;
+
+            wrapper.innerHTML = `
+                <div class="level-node" 
+                     style="background-image: url('https://flagcdn.com/w160/${match.code}.png')"
+                     onclick="startGame(${levelNum})">
+                </div>
+                <div class="mt-2 text-center">
+                    <div class="text-[8px] text-white/50 font-bold uppercase tracking-tighter">Partida</div>
+                    <div class="text-sm font-black text-[#f0b90b]">${levelNum}</div>
+                </div>
+            `;
+            mapContainer.appendChild(wrapper);
+        });
+        document.getElementById('map-screen').classList.remove('hidden');
+        document.getElementById('game-ui').classList.add('hidden');
+        document.getElementById('swap-btn').classList.add('hidden');
+        document.getElementById('bottom-menu').classList.add('hidden');
+    }
+
+    function startGame(lvl) {
+        if (lvl > userProgress) return;
+        AudioEngine.init();
+        currentLevel = lvl;
+        score = 0;
+        remainingBalls = 30 + Math.floor(lvl * 1.5);
+        gameState = 'PLAYING';
+        fallingBubbles = [];
+        isShooting = false;
+
+        document.getElementById('map-screen').classList.add('hidden');
+        document.getElementById('win-screen').classList.add('hidden');
+        document.getElementById('lose-screen').classList.add('hidden');
+        document.getElementById('game-ui').classList.remove('hidden');
+        document.getElementById('swap-btn').classList.remove('hidden');
+        document.getElementById('bottom-menu').classList.remove('hidden');
+        
+        document.getElementById('ui-lvl').innerText = lvl;
+        document.getElementById('ui-score').innerText = score;
+
+        initGrid();
+        spawnShot();
+    }
+
+    const getLX = (r, c) => (c * RADIUS * 2) + RADIUS + (r % 2 ? RADIUS : 0) + (LOGICAL_WIDTH - COLS * RADIUS * 2) / 2;
+    const getLY = (r) => r * (RADIUS * 1.7) + RADIUS + 100;
+
+    function initGrid() {
+        grid = Array.from({length: ROWS}, () => Array(COLS).fill(null));
+        const rowsToFill = 4 + Math.floor(currentLevel/2);
+        const codes = MATCH_DATA.slice(0, Math.min(currentLevel + 2, 12)).map(m => m.code);
+        
+        for (let r = 0; r < rowsToFill; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (r % 2 !== 0 && c === COLS - 1) continue;
+                grid[r][c] = new Bubble(getLX(r, c), getLY(r), codes[Math.floor(Math.random() * codes.length)]);
+            }
+        }
+        nextCode = codes[Math.floor(Math.random() * codes.length)];
+    }
+
+    function spawnShot() {
+        if (remainingBalls <= 0) { 
+            gameOver("Sem bolas extras!"); 
+            return; 
+        }
+        
+        const activeCodes = [...new Set(grid.flat().filter(b => b).map(b => b.code))];
+        if (activeCodes.length === 0) { winGame(); return; }
+
+        currentBubble = new Bubble(LOGICAL_WIDTH/2, LOGICAL_HEIGHT - 80, nextCode);
+        nextCode = activeCodes[Math.floor(Math.random() * activeCodes.length)];
+        updatePreview();
+        isShooting = false;
+    }
+
+    function updatePreview() {
+        const pCanvas = document.getElementById('previewCanvas');
+        const pCtx = pCanvas.getContext('2d');
+        pCtx.clearRect(0,0,50,50);
+        new Bubble(25, 25, nextCode).draw(pCtx, 1);
+        document.getElementById('ball-count').innerText = remainingBalls;
+    }
+
+    function swapBubbles() {
+        if (isShooting || gameState !== 'PLAYING') return;
+        const temp = currentBubble.code;
+        currentBubble.code = nextCode;
+        nextCode = temp;
+        updatePreview();
+    }
+
+    function getNeighbors(r, c) {
+        const res = [];
+        const offsets = r % 2 === 0 ? 
+            [[-1,-1], [-1,0], [0,-1], [0,1], [1,-1], [1,0]] : 
+            [[-1,0], [-1,1], [0,-1], [0,1], [1,0], [1,1]];
+        for (const [dr, dc] of offsets) {
+            const nr = r + dr, nc = c + dc;
+            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) res.push([nr, nc]);
+        }
+        return res;
+    }
+
+    function triggerImpact() {
+        let bestR = -1, bestC = -1, minDist = Infinity;
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (r % 2 !== 0 && c === COLS - 1) continue;
+                if (grid[r][c]) continue;
+                const d = Math.hypot(currentBubble.x - getLX(r, c), currentBubble.y - getLY(r));
+                if (d < minDist) { minDist = d; bestR = r; bestC = c; }
+            }
+        }
+
+        if (bestR === -1) { spawnShot(); return; }
+
+        const code = currentBubble.code;
+        grid[bestR][bestC] = new Bubble(getLX(bestR, bestC), getLY(bestR), code);
+        
+        // Match 3
+        const matches = [];
+        const queue = [[bestR, bestC]];
+        const visited = new Set([`${bestR},${bestC}`]);
+        while(queue.length > 0) {
+            const [currR, currC] = queue.shift();
+            if (grid[currR][currC].code === code) {
+                matches.push([currR, currC]);
+                getNeighbors(currR, currC).forEach(([nr, nc]) => {
+                    if (!visited.has(`${nr},${nc}`) && grid[nr][nc] && grid[nr][nc].code === code) {
+                        visited.add(`${nr},${nc}`); queue.push([nr, nc]);
+                    }
+                });
+            }
+        }
+
+        if (matches.length >= 3) {
+            matches.forEach(([r, c]) => {
+                createScore(grid[r][c].x, grid[r][c].y, 10);
+                grid[r][c] = null;
+                AudioEngine.pop();
+            });
+            score += matches.length * 10;
+            document.getElementById('ui-score').innerText = score;
+            
+            // Queda de órfãos
+            setTimeout(() => {
+                const connected = new Set();
+                const rootQ = [];
+                for (let c = 0; c < COLS; c++) if (grid[0][c]) { connected.add(`0,${c}`); rootQ.push([0, c]); }
+                while (rootQ.length > 0) {
+                    const [r, c] = rootQ.shift();
+                    getNeighbors(r, c).forEach(([nr, nc]) => {
+                        if (!connected.has(`${nr},${nc}`) && grid[nr][nc]) {
+                            connected.add(`${nr},${nc}`); rootQ.push([nr, nc]);
+                        }
+                    });
+                }
+                for (let r = 0; r < ROWS; r++) {
+                    for (let c = 0; c < COLS; c++) {
+                        if (grid[r][c] && !connected.has(`${r},${c}`)) {
+                            const b = grid[r][c];
+                            b.vy = 2; b.vx = (Math.random()-0.5)*4;
+                            fallingBubbles.push(b); grid[r][c] = null;
+                            score += 20;
+                        }
+                    }
+                }
+                document.getElementById('ui-score').innerText = score;
+                spawnShot();
+            }, 100);
+        } else {
+            AudioEngine.bounce();
+            if (bestR >= ROWS - 2) gameOver("Goleiro aceitou! Ocupou o campo todo.");
+            else spawnShot();
+        }
+    }
+
+    function createScore(x, y, v) {
+        const el = document.createElement('div');
+        el.className = 'floating-score';
+        el.style.left = `${(x / LOGICAL_WIDTH) * 100}%`;
+        el.style.top = `${(y / LOGICAL_HEIGHT) * 100}%`;
+        el.innerText = `+${v}`;
+        document.getElementById('game-wrapper').appendChild(el);
+        setTimeout(() => el.remove(), 1000);
+    }
+
+    function winGame() {
+        gameState = 'WIN';
+        if (currentLevel === userProgress && userProgress < 12) {
+            userProgress++;
+            localStorage.setItem('football_journey_lvl', userProgress);
+        }
+        document.getElementById('win-screen').classList.remove('hidden');
+        AudioEngine.win();
+    }
+
+    function gameOver(reason) {
+        gameState = 'LOSE';
+        document.getElementById('lose-reason').innerText = reason;
+        document.getElementById('lose-screen').classList.remove('hidden');
+        AudioEngine.lose();
+    }
+
+    function backToMap() {
+        gameState = 'MAP';
+        renderMap();
+    }
+
+    function nextLevel() {
+        if (currentLevel < 12) startGame(currentLevel + 1);
+        else backToMap();
+    }
+
+    function retryLevel() {
+        startGame(currentLevel);
+    }
+
+    function resetProgress() {
+        if (confirm("Resetar sua carreira no futebol?")) {
+            userProgress = 1;
+            localStorage.setItem('football_journey_lvl', 1);
+            renderMap();
+        }
+    }
+
+    // Input Handling
+    function handleInput(e) {
+        if (gameState !== 'PLAYING' || isShooting) return;
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches ? e.touches[0] : e;
+        const x = (touch.clientX - rect.left) * (LOGICAL_WIDTH / rect.width);
+        const y = (touch.clientY - rect.top) * (LOGICAL_HEIGHT / rect.height);
+        
+        rawAimAngle = Math.atan2(y - (LOGICAL_HEIGHT - 80), x - LOGICAL_WIDTH/2);
+        
+        if (e.type === 'touchend' || e.type === 'mouseup') {
+            isShooting = true;
+            remainingBalls--;
+            currentBubble.vx = Math.cos(rawAimAngle) * 12;
+            currentBubble.vy = Math.sin(rawAimAngle) * 12;
+            AudioEngine.shoot();
+        }
+    }
+
+    canvas.addEventListener('mousemove', handleInput);
+    canvas.addEventListener('mouseup', handleInput);
+    canvas.addEventListener('touchstart', handleInput);
+    canvas.addEventListener('touchmove', handleInput);
+    canvas.addEventListener('touchend', handleInput);
+
+    // Loop Principal
+    function update() {
+        if (gameState === 'PLAYING') {
+            if (isShooting && currentBubble) {
+                currentBubble.x += currentBubble.vx;
+                currentBubble.y += currentBubble.vy;
+                
+                if (currentBubble.x < RADIUS || currentBubble.x > LOGICAL_WIDTH - RADIUS) {
+                    currentBubble.vx *= -1;
+                    AudioEngine.bounce();
+                }
+
+                // Colisão com teto ou outras bolas
+                let hit = currentBubble.y < getLY(0);
+                if (!hit) {
+                    for (let r = 0; r < ROWS; r++) {
+                        for (let c = 0; c < COLS; c++) {
+                            if (grid[r][c] && Math.hypot(currentBubble.x - grid[r][c].x, currentBubble.y - grid[r][c].y) < RADIUS * 1.8) {
+                                hit = true; break;
+                            }
+                        }
+                        if (hit) break;
+                    }
+                }
+                if (hit) { isShooting = false; triggerImpact(); }
+            }
+
+            for (let i = fallingBubbles.length - 1; i >= 0; i--) {
+                const b = fallingBubbles[i];
+                b.vy += 0.5; b.y += b.vy; b.x += b.vx;
+                if (b.y > LOGICAL_HEIGHT + 50) fallingBubbles.splice(i, 1);
+            }
+        }
+    }
+
+    function draw() {
+        const scX = canvas.width / (window.devicePixelRatio || 1) / LOGICAL_WIDTH;
+        const scY = canvas.height / (window.devicePixelRatio || 1) / LOGICAL_HEIGHT;
+        ctx.clearRect(0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT);
+
+        if (gameState === 'PLAYING' || gameState === 'WIN' || gameState === 'LOSE') {
+            // Desenhar Mira
+            if (!isShooting && currentBubble) {
+                ctx.setLineDash([5, 10]);
+                ctx.strokeStyle = 'rgba(240,185,11,0.5)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(LOGICAL_WIDTH/2, LOGICAL_HEIGHT-80);
+                ctx.lineTo(LOGICAL_WIDTH/2 + Math.cos(rawAimAngle)*150, (LOGICAL_HEIGHT-80) + Math.sin(rawAimAngle)*150);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // Desenhar Grade
+            grid.flat().forEach(b => b && b.draw());
+            fallingBubbles.forEach(b => b.draw());
+            if (currentBubble) currentBubble.draw();
+        }
+
+        requestAnimationFrame(() => { update(); draw(); });
+    }
+
+    window.onload = () => {
+        renderMap();
+        draw();
+    };
+</script>
+
+</body>
+</html>
