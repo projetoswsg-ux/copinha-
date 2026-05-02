@@ -317,49 +317,6 @@
 
 
 
-    const matchData = [
-        { name: "Brasil", code: "br" }, { name: "Argentina", code: "ar" },
-        { name: "França", code: "fr" }, { name: "Alemanha", code: "de" },
-        { name: "Espanha", code: "es" }, { name: "Itália", code: "it" },
-        { name: "Inglaterra", code: "gb" }, { name: "Portugal", code: "pt" },
-        { name: "Holanda", code: "nl" }, { name: "Bélgica", code: "be" },
-        { name: "Uruguai", code: "uy" }, { name: "Croácia", code: "hr" }
-    ];
-
-    let userProgress = 1;
-
-    function renderMap() {
-        const mapContainer = document.getElementById('journey-map');
-        mapContainer.querySelectorAll('.level-wrapper').forEach(n => n.remove());
-
-        matchData.forEach((match, index) => {
-            const levelNum = index + 1;
-            const wrapper = document.createElement('div');
-            
-            let statusClass = (levelNum < userProgress) ? 'level-unlocked' : 
-                              (levelNum === userProgress) ? 'level-current' : 'level-locked';
-
-            let posClass = (levelNum % 4 === 1) ? 'node-left' : 
-                           (levelNum % 4 === 3) ? 'node-right' : 'node-center';
-
-            wrapper.className = `level-wrapper ${statusClass} ${posClass}`;
-            wrapper.style.top = `${index * 130 + 40}px`;
-
-            wrapper.innerHTML = `
-                <div class="level-node" 
-                     style="background-image: url('https://flagcdn.com/w160/${match.code}.png')"
-                     onclick="startLevel(${levelNum})">
-                </div>
-                <div class="level-info">
-                    <div class="level-title">Partida</div>
-                    <div class="level-number">${levelNum}</div>
-                </div>
-            `;
-            mapContainer.appendChild(wrapper);
-        });
-    }
-
-
 
 
     
