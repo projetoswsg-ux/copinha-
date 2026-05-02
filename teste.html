@@ -126,7 +126,6 @@
 
 
 
-
 <script>
     const AudioEngine = (() => {
         let ctx = null;
@@ -338,22 +337,20 @@
         nextSymbol = symbols[Math.floor(Math.random() * symbols.length)];
         spawnShot();
     }
-function spawnShot() {
+
+    function spawnShot() {
         const activeBubblesInGrid = grid.flat().filter(f => f);
         
-        // 1. Checa se ganhou (grid vazio e sem animações)
         if (activeBubblesInGrid.length === 0 && fallingBubbles.length === 0 && sparkles.length === 0) {
             winGame();
             return;
         }
         
-        // 2. Checa se perdeu (zero bolas e nada mais acontecendo)
         if (remainingBalls <= 0 && !isShooting && fallingBubbles.length === 0) {
             gameOver("CARTÃO VERMELHO 🟥");
             return;
         }
 
-        // Se ainda tem jogo, cria a nova bola
         currentBubble = new Bubble(LOGICAL_WIDTH/2, LOGICAL_HEIGHT - 80, nextSymbol);
         const activeTypes = [...new Set(activeBubblesInGrid.map(f => f.type))];
         const pool = activeTypes.length > 0 ? activeTypes : CRYPTO_CONFIG.map(c => c.symbol);
@@ -362,36 +359,35 @@ function spawnShot() {
         isShooting = false;
     }
 
-    // Ajuste no update para garantir que o Game Over aconteça 
-    // assim que a última bola terminar sua trajetória
-    function update() {
-        // ... (lógica de sparkles e laser pulse)
+    function swapBubbles() {
+        if (isShooting || gameState !== 'PLAYING' || !currentBubble) return;
+        AudioEngine.swap();
+        const temp = currentBubble.type;
+        currentBubble = new Bubble(currentBubble.x, currentBubble.y, nextSymbol);
+        nextSymbol = temp;
+        updatePreview();
+    }
 
-        for (let i = fallingBubbles.length - 1; i >= 0; i--) {
-            // ... (lógica de queda das bolas)
-            if (Math.abs(b.vy) < 0.5 && b.y > LOGICAL_HEIGHT - RADIUS - 5) {
-                fallingBubbles.splice(i, 1);
-                // Se era a última animação e as bolas acabaram, finaliza
-                if (remainingBalls <= 0 && fallingBubbles.length === 0 && !isShooting) {
-                    spawnShot(); 
-                }
-            }
-        }
-
+    function showRewardAd() {
         if (gameState !== 'PLAYING') return;
-
-        if (isShooting && currentBubble) {
-            // ... (lógica de movimento do tiro)
-            // Quando a bola disparada atinge algo (triggerImpact), 
-            // ela chamará spawnShot() que agora checará o fim das bolas.
-        }
+        const overlay = document.getElementById('ad-overlay');
+        const timerText = document.getElementById('ad-timer');
+        overlay.classList.remove('hidden');
+        let timeLeft = 5;
+        timerText.innerText = timeLeft;
+        const interval = setInterval(() => {
+            timeLeft--;
+            timerText.innerText = timeLeft;
+            if (timeLeft <= 0) {
+                clearInterval(interval);
+                overlay.classList.add('hidden');
+                remainingBalls += 3;
+                updatePreview();
+                createMilestoneMessage("+3 BOLAS!");
+                AudioEngine.cashRegister();
+            }
+        }, 1000);
     }
-
-    // Função de derrota atualizada para o botão "Voltar para o CT"
-    function retryLevel() { 
-        backToMap(); // Agora redireciona para o mapa
-    }
-
 
     function getNeighbors(r, c) {
         const neighbors = [];
@@ -478,7 +474,6 @@ function spawnShot() {
         } else {
             AudioEngine.impact();
             if (bestR >= ROWS - 2) {
-                // Pequeno delay para o jogador ver a bola encostando no fundo antes da derrota
                 setTimeout(() => gameOver("Você está fora!"), 500);
             } else { spawnShot(); }
         }
@@ -549,10 +544,12 @@ function spawnShot() {
             }
             if (Math.abs(b.vy) < 0.5 && b.y > LOGICAL_HEIGHT - RADIUS - 5) {
                 fallingBubbles.splice(i, 1);
+                if (remainingBalls <= 0 && fallingBubbles.length === 0 && !isShooting) {
+                    spawnShot(); 
+                }
             }
         }
 
-        // Verificação extra para o caso de ganhar na última bola caída
         if (gameState === 'PLAYING' && !isShooting && grid.flat().filter(v => v).length === 0 && fallingBubbles.length === 0 && sparkles.length === 0) {
             winGame();
         }
@@ -669,7 +666,7 @@ function spawnShot() {
         renderMap(); 
     }
     
-    function retryLevel() { startGame(currentLevel); }
+    function retryLevel() { backToMap(); }
     function resetProgress() { localStorage.setItem('crypto_shooter_lvl', 1); unlockedLevel = 1; renderMap(); }
     function loop() { update(); draw(); requestAnimationFrame(loop); }
     loadResources();
