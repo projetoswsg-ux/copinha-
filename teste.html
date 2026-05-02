@@ -262,17 +262,27 @@
             return "#" + (0x1000000 + (R<255?R<0?0:R:255)*0x10000 + (G<255?G<0?0:G:255)*0x100 + (B<255?B<0?0:B:255)).toString(16).slice(1);
         }
     }
-
-    function updatePreview() {
+function updatePreview() {
         const pCanvas = document.getElementById('previewCanvas');
         const pCtx = pCanvas.getContext('2d');
         pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
-        const previewBubble = new Bubble(25, 25, nextSymbol);
-        previewBubble.draw(1, 1, pCtx);
+
+        // Só desenha a bola de reserva se restarem mais de 0 bolas no contador
+        // Como o contador diminui no momento do tiro, quando restar 1 no badge, 
+        // significa que esta é a última e não há "próxima".
+        if (remainingBalls > 0) {
+            const previewBubble = new Bubble(25, 25, nextSymbol);
+            previewBubble.draw(1, 1, pCtx);
+        }
+
         const badge = document.getElementById('ball-count-badge');
         badge.innerText = remainingBalls;
-        if (remainingBalls <= 5 && remainingBalls > 0) badge.classList.add('critical-balls');
-        else badge.classList.remove('critical-balls');
+        
+        if (remainingBalls <= 5 && remainingBalls > 0) {
+            badge.classList.add('critical-balls');
+        } else {
+            badge.classList.remove('critical-balls');
+        }
     }
 
     const getLX = (r, c) => (c * RADIUS * 2) + RADIUS + (r % 2 ? RADIUS : 0) + (LOGICAL_WIDTH - COLS * RADIUS * 2) / 2;
