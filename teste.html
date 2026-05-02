@@ -125,7 +125,6 @@
 
 
 
-
 <script>
     const AudioEngine = (() => {
         let ctx = null;
@@ -262,27 +261,23 @@
             return "#" + (0x1000000 + (R<255?R<0?0:R:255)*0x10000 + (G<255?G<0?0:G:255)*0x100 + (B<255?B<0?0:B:255)).toString(16).slice(1);
         }
     }
-function updatePreview() {
+
+    function updatePreview() {
         const pCanvas = document.getElementById('previewCanvas');
         const pCtx = pCanvas.getContext('2d');
         pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
-
-        // Só desenha a bola de reserva se restarem mais de 0 bolas no contador
-        // Como o contador diminui no momento do tiro, quando restar 1 no badge, 
-        // significa que esta é a última e não há "próxima".
+        
+        // AJUSTE: Se só resta 1 bola (a que está no canhão), não mostra nada na próxima
         if (remainingBalls > 0) {
             const previewBubble = new Bubble(25, 25, nextSymbol);
             previewBubble.draw(1, 1, pCtx);
         }
 
         const badge = document.getElementById('ball-count-badge');
-        badge.innerText = remainingBalls;
+        badge.innerText = Math.max(0, remainingBalls); // Não deixa mostrar negativo no UI
         
-        if (remainingBalls <= 5 && remainingBalls > 0) {
-            badge.classList.add('critical-balls');
-        } else {
-            badge.classList.remove('critical-balls');
-        }
+        if (remainingBalls <= 5 && remainingBalls > 0) badge.classList.add('critical-balls');
+        else badge.classList.remove('critical-balls');
     }
 
     const getLX = (r, c) => (c * RADIUS * 2) + RADIUS + (r % 2 ? RADIUS : 0) + (LOGICAL_WIDTH - COLS * RADIUS * 2) / 2;
@@ -299,24 +294,6 @@ function updatePreview() {
             gridEl.appendChild(div);
         }
         document.getElementById('bottom-menu').classList.add('hidden');
-    }
-
-    function createFloatingScore(x, y, value, isBonus = false) {
-        const el = document.createElement('div');
-        el.className = isBonus ? 'bonus-float' : 'floating-score';
-        el.style.left = `${(x / LOGICAL_WIDTH) * 100}%`;
-        el.style.top = `${(y / LOGICAL_HEIGHT) * 100}%`;
-        el.innerText = `+${value}`;
-        document.getElementById('game-wrapper').appendChild(el);
-        setTimeout(() => el.remove(), isBonus ? 800 : 1200);
-    }
-
-    function createMilestoneMessage(text) {
-        const el = document.createElement('div');
-        el.className = 'milestone-msg';
-        el.innerText = text;
-        document.getElementById('game-wrapper').appendChild(el);
-        setTimeout(() => el.remove(), 1000);
     }
 
     function startGame(lvl) {
@@ -356,10 +333,14 @@ function updatePreview() {
             return;
         }
         
-        if (remainingBalls <= 0 && !isShooting && fallingBubbles.length === 0) {
-            gameOver("CARTÃO VERMELHO 🟥");
+        // AJUSTE: Perde se as bolas acabarem e o grid não estiver vazio
+        if (remainingBalls < 0 && !isShooting && fallingBubbles.length === 0) {
+            gameOver("FIM DE JOGO! ⚽");
             return;
         }
+
+        // Se acabaram as bolas mas o tiro atual ainda não resolveu, esperamos
+        if (remainingBalls < 0) return;
 
         currentBubble = new Bubble(LOGICAL_WIDTH/2, LOGICAL_HEIGHT - 80, nextSymbol);
         const activeTypes = [...new Set(activeBubblesInGrid.map(f => f.type))];
@@ -367,46 +348,6 @@ function updatePreview() {
         nextSymbol = pool[Math.floor(Math.random() * pool.length)];
         updatePreview(); 
         isShooting = false;
-    }
-
-    function swapBubbles() {
-        if (isShooting || gameState !== 'PLAYING' || !currentBubble) return;
-        AudioEngine.swap();
-        const temp = currentBubble.type;
-        currentBubble = new Bubble(currentBubble.x, currentBubble.y, nextSymbol);
-        nextSymbol = temp;
-        updatePreview();
-    }
-
-    function showRewardAd() {
-        if (gameState !== 'PLAYING') return;
-        const overlay = document.getElementById('ad-overlay');
-        const timerText = document.getElementById('ad-timer');
-        overlay.classList.remove('hidden');
-        let timeLeft = 5;
-        timerText.innerText = timeLeft;
-        const interval = setInterval(() => {
-            timeLeft--;
-            timerText.innerText = timeLeft;
-            if (timeLeft <= 0) {
-                clearInterval(interval);
-                overlay.classList.add('hidden');
-                remainingBalls += 3;
-                updatePreview();
-                createMilestoneMessage("+3 BOLAS!");
-                AudioEngine.cashRegister();
-            }
-        }, 1000);
-    }
-
-    function getNeighbors(r, c) {
-        const neighbors = [];
-        const offsets = r % 2 === 0 ? [[-1, -1], [-1, 0], [0, -1], [0, 1], [1, -1], [1, 0]] : [[-1, 0], [-1, 1], [0, -1], [0, 1], [1, 0], [1, 1]];
-        for (const [dr, dc] of offsets) {
-            const nr = r + dr, nc = c + dc;
-            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) neighbors.push([nr, nc]);
-        }
-        return neighbors;
     }
 
     function triggerImpact() {
@@ -444,14 +385,11 @@ function updatePreview() {
                 setTimeout(() => { 
                     if(grid[r][c]) {
                         createSparkles(grid[r][c].x, grid[r][c].y, grid[r][c].config.color);
-                        createFloatingScore(grid[r][c].x, grid[r][c].y, 10);
                         grid[r][c] = null; 
                         AudioEngine.match(); 
                     }
                 }, i * 40);
             });
-            if (matches.length >= 6) createMilestoneMessage("UMA MÁQUINA");
-            else if (matches.length >= 5) createMilestoneMessage("GOOOOLLLLLLL");
             score += matches.length * 10;
             setTimeout(() => {
                 const connected = new Set();
@@ -465,7 +403,6 @@ function updatePreview() {
                         }
                     });
                 }
-                let fallCount = 0;
                 for (let r = 0; r < ROWS; r++) {
                     for (let c = 0; c < COLS; c++) {
                         if (grid[r][c] && !connected.has(`${r},${c}`)) {
@@ -473,19 +410,16 @@ function updatePreview() {
                             b.vy = 2; b.vx = (Math.random() - 0.5) * 4;
                             fallingBubbles.push(b); grid[r][c] = null;
                             score += 20; AudioEngine.pop();
-                            fallCount++;
                         }
                     }
                 }
-                if (fallCount > 5) { createMilestoneMessage("GOOOOLLL!"); AudioEngine.cashRegister(); }
                 document.getElementById('ui-score').innerText = score;
                 spawnShot();
             }, matches.length * 45 + 100);
         } else {
             AudioEngine.impact();
-            if (bestR >= ROWS - 2) {
-                setTimeout(() => gameOver("Você está fora!"), 500);
-            } else { spawnShot(); }
+            if (bestR >= ROWS - 2) gameOver("VOCÊ PERDEU!");
+            else spawnShot();
         }
     }
 
@@ -504,25 +438,8 @@ function updatePreview() {
             unlockedLevel++;
             localStorage.setItem('crypto_shooter_lvl', unlockedLevel);
         }
-        const nextBtn = document.getElementById('next-lvl-btn');
-        if (currentLevel >= 12) nextBtn.classList.add('hidden');
-        else nextBtn.classList.remove('hidden');
         document.getElementById('win-screen').classList.remove('hidden');
         AudioEngine.win();
-    }
-
-    function nextLevel() { if (currentLevel < 12) startGame(currentLevel + 1); else backToMap(); }
-
-    function createSparkles(x, y, color) {
-        for(let i=0; i<8; i++) {
-            sparkles.push({
-                x, y, 
-                vx: (Math.random() - 0.5) * 10,
-                vy: (Math.random() - 0.5) * 10 - 5,
-                life: 1.0,
-                color
-            });
-        }
     }
 
     function update() {
@@ -541,30 +458,12 @@ function updatePreview() {
             b.vy += 0.8; b.x += b.vx; b.y += b.vy;
             if (b.y + RADIUS > LOGICAL_HEIGHT) {
                 b.y = LOGICAL_HEIGHT - RADIUS; b.vy *= -0.5; b.vx *= 0.8;
-                if (Math.abs(b.vy) > 1.5) {
-                    AudioEngine.coin(); score += 2; 
-                    document.getElementById('ui-score').innerText = score;
-                    createFloatingScore(b.x, b.y - 20, 2, true); 
-                    createSparkles(b.x, b.y, b.config.color); 
-                    shakeAmount = Math.max(shakeAmount, 3);
-                }
+                if (Math.abs(b.vy) > 1.5) AudioEngine.coin();
             }
-            if (b.x < RADIUS || b.x > LOGICAL_WIDTH - RADIUS) {
-                b.vx *= -1; b.x = Math.max(RADIUS, Math.min(LOGICAL_WIDTH - RADIUS, b.x));
-            }
-            if (Math.abs(b.vy) < 0.5 && b.y > LOGICAL_HEIGHT - RADIUS - 5) {
-                fallingBubbles.splice(i, 1);
-                if (remainingBalls <= 0 && fallingBubbles.length === 0 && !isShooting) {
-                    spawnShot(); 
-                }
-            }
+            if (b.x < RADIUS || b.x > LOGICAL_WIDTH - RADIUS) b.vx *= -1;
+            if (Math.abs(b.vy) < 0.5 && b.y > LOGICAL_HEIGHT - RADIUS - 5) fallingBubbles.splice(i, 1);
         }
 
-        if (gameState === 'PLAYING' && !isShooting && grid.flat().filter(v => v).length === 0 && fallingBubbles.length === 0 && sparkles.length === 0) {
-            winGame();
-        }
-
-        if (gameState !== 'PLAYING') return;
         if (isShooting && currentBubble) {
             const SUBSTEPS = 8;
             for(let i=0; i<SUBSTEPS; i++) {
@@ -595,34 +494,23 @@ function updatePreview() {
         const rect = canvas.getBoundingClientRect();
         const scX = rect.width / LOGICAL_WIDTH;
         const scY = rect.height / LOGICAL_HEIGHT;
+        
         ctx.save();
-        if (shakeAmount > 0.1) ctx.translate((Math.random() - 0.5) * shakeAmount, (Math.random() - 0.5) * shakeAmount);
-        if (isDragging && !isShooting) {
+        if (isDragging && !isShooting && remainingBalls >= 0) {
+            // Desenha a mira laser...
             ctx.save();
             let bX = currentBubble.x, bY = currentBubble.y;
             let dX = Math.cos(smoothAimAngle), dY = Math.sin(smoothAimAngle);
-            ctx.shadowBlur = 10 + Math.sin(laserPulse) * 4;
-            ctx.shadowColor = "white"; ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
-            ctx.lineWidth = 4 + Math.sin(laserPulse) * 1.5;
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+            ctx.lineWidth = 2;
             ctx.beginPath(); ctx.moveTo(bX * scX, bY * scY);
-            for(let i=0; i<40; i++) {
-                bX += dX * 15; bY += dY * 15;
+            for(let i=0; i<30; i++) {
+                bX += dX * 20; bY += dY * 20;
                 if (bX < RADIUS || bX > LOGICAL_WIDTH - RADIUS) dX *= -1;
-                let laserHit = false;
-                for (let r = 0; r < ROWS; r++) {
-                    for (let c = 0; c < COLS; c++) {
-                        if (grid[r][c]) {
-                            const dist = Math.hypot(bX - getLX(r, c), bY - getLY(r));
-                            if (dist < RADIUS * 1.5) { laserHit = true; break; }
-                        }
-                    }
-                    if (laserHit) break;
-                }
                 ctx.lineTo(bX * scX, bY * scY);
-                if (laserHit || bY < UI_HEIGHT) break;
+                if (bY < UI_HEIGHT) break;
             }
-            ctx.stroke(); ctx.shadowBlur = 0; ctx.strokeStyle = "white"; ctx.lineWidth = 1.5; ctx.stroke();
-            ctx.restore();
+            ctx.stroke(); ctx.restore();
         }
         grid.flat().forEach(b => b && b.draw(scX, scY));
         fallingBubbles.forEach(b => b.draw(scX, scY));
@@ -635,15 +523,9 @@ function updatePreview() {
         ctx.restore();
     }
 
-    const getRel = (ex, ey) => {
-        const rect = canvas.getBoundingClientRect();
-        return { x: (ex - rect.left) * (LOGICAL_WIDTH / rect.width), y: (ey - rect.top) * (LOGICAL_HEIGHT / rect.height) };
-    };
     const start = (e) => {
-        if (gameState !== 'PLAYING' || isShooting || !currentBubble) return;
+        if (gameState !== 'PLAYING' || isShooting || !currentBubble || remainingBalls < 0) return;
         isDragging = true;
-        const p = getRel(e.touches ? e.touches[0].clientX : e.clientX, e.touches ? e.touches[0].clientY : e.clientY);
-        rawAimAngle = Math.atan2(p.y - currentBubble.y, p.x - currentBubble.x);
     };
     const move = (e) => {
         if (!isDragging) return;
@@ -654,11 +536,35 @@ function updatePreview() {
     const end = () => {
         if (!isDragging) return;
         isDragging = false; isShooting = true;
-        remainingBalls--; updatePreview();
+        remainingBalls--; 
+        updatePreview();
         currentBubble.vx = Math.cos(smoothAimAngle) * 22;
         currentBubble.vy = Math.sin(smoothAimAngle) * 22;
         AudioEngine.shoot();
     };
+
+    const getRel = (ex, ey) => {
+        const rect = canvas.getBoundingClientRect();
+        return { x: (ex - rect.left) * (LOGICAL_WIDTH / rect.width), y: (ey - rect.top) * (LOGICAL_HEIGHT / rect.height) };
+    };
+
+    function getNeighbors(r, c) {
+        const neighbors = [];
+        const offsets = r % 2 === 0 ? [[-1, -1], [-1, 0], [0, -1], [0, 1], [1, -1], [1, 0]] : [[-1, 0], [-1, 1], [0, -1], [0, 1], [1, 0], [1, 1]];
+        for (const [dr, dc] of offsets) {
+            const nr = r + dr, nc = c + dc;
+            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) neighbors.push([nr, nc]);
+        }
+        return neighbors;
+    }
+
+    function createSparkles(x, y, color) {
+        for(let i=0; i<8; i++) {
+            sparkles.push({
+                x, y, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10-5, life: 1.0, color
+            });
+        }
+    }
 
     canvas.addEventListener('mousedown', start);
     window.addEventListener('mousemove', move);
@@ -676,13 +582,10 @@ function updatePreview() {
         renderMap(); 
     }
     
-    function retryLevel() { backToMap(); }
-    function resetProgress() { localStorage.setItem('crypto_shooter_lvl', 1); unlockedLevel = 1; renderMap(); }
     function loop() { update(); draw(); requestAnimationFrame(loop); }
     loadResources();
     loop();
 </script>
-
 
     
 </body>
