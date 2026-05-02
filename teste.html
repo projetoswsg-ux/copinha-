@@ -123,6 +123,10 @@
     </div>
 </div>
 
+
+
+
+
 <script>
     const AudioEngine = (() => {
         let ctx = null;
@@ -208,37 +212,27 @@
     class Bubble {
         constructor(x, y, symbol) {
             this.x = x; this.y = y; this.type = symbol;
-            this.vx = 0;
-            this.vy = 0;
+            this.vx = 0; this.vy = 0;
             this.config = CRYPTO_CONFIG.find(c => c.symbol === symbol) || CRYPTO_CONFIG[0];
         }
 
         draw(scX, scY, targetCtx = ctx) {
-            const dX = this.x * scX;
-            const dY = this.y * scY;
+            const dX = this.x * scX; const dY = this.y * scY;
             const r = (RADIUS - 1) * scX;
-
             targetCtx.save();
             targetCtx.shadowColor = 'rgba(0,0,0,0.5)';
             targetCtx.shadowBlur = 10;
             targetCtx.shadowOffsetY = 5;
-
-            const grad = targetCtx.createRadialGradient(
-                dX - r * 0.3, dY - r * 0.3, r * 0.05, 
-                dX, dY, r
-            );
+            const grad = targetCtx.createRadialGradient(dX - r * 0.3, dY - r * 0.3, r * 0.05, dX, dY, r);
             grad.addColorStop(0, '#ffffff'); 
             grad.addColorStop(0.1, this.config.color);
             grad.addColorStop(1, this.darkenColor(this.config.color, 50));
-            
             targetCtx.beginPath();
             targetCtx.arc(dX, dY, r, 0, Math.PI * 2);
             targetCtx.fillStyle = grad;
             targetCtx.fill();
-            
             targetCtx.shadowBlur = 0;
             targetCtx.shadowOffsetY = 0;
-
             targetCtx.save();
             targetCtx.globalAlpha = 0.60; 
             targetCtx.textAlign = 'center';
@@ -246,32 +240,26 @@
             targetCtx.font = `${Math.round(r * 0.8)}px Arial`;
             targetCtx.fillText(this.config.emoji, dX, dY + (r * 0.05));
             targetCtx.restore();
-
             const highlight = targetCtx.createLinearGradient(dX, dY - r, dX, dY + r);
             highlight.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
             highlight.addColorStop(0.4, 'rgba(255, 255, 255, 0.2)');
             highlight.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
-            
             targetCtx.beginPath();
             targetCtx.ellipse(dX, dY - r * 0.45, r * 0.75, r * 0.4, 0, 0, Math.PI * 2);
             targetCtx.fillStyle = highlight;
             targetCtx.fill();
-
             targetCtx.beginPath();
             targetCtx.arc(dX, dY, r - 1.5, 0, Math.PI * 2);
             targetCtx.strokeStyle = 'rgba(255,255,255,0.4)';
             targetCtx.lineWidth = 2;
             targetCtx.stroke();
-
             targetCtx.restore();
         }
 
         darkenColor(hex, percent) {
             const num = parseInt(hex.replace("#",""), 16),
             amt = Math.round(2.55 * percent),
-            R = (num >> 16) - amt,
-            G = (num >> 8 & 0x00FF) - amt,
-            B = (num & 0x0000FF) - amt;
+            R = (num >> 16) - amt, G = (num >> 8 & 0x00FF) - amt, B = (num & 0x0000FF) - amt;
             return "#" + (0x1000000 + (R<255?R<0?0:R:255)*0x10000 + (G<255?G<0?0:G:255)*0x100 + (B<255?B<0?0:B:255)).toString(16).slice(1);
         }
     }
@@ -282,16 +270,10 @@
         pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
         const previewBubble = new Bubble(25, 25, nextSymbol);
         previewBubble.draw(1, 1, pCtx);
-        
         const badge = document.getElementById('ball-count-badge');
         badge.innerText = remainingBalls;
-        
-        // Ajuste: Contador pisca em vermelho se faltar 5 ou menos bolas
-        if (remainingBalls <= 5 && remainingBalls > 0) {
-            badge.classList.add('critical-balls');
-        } else {
-            badge.classList.remove('critical-balls');
-        }
+        if (remainingBalls <= 5 && remainingBalls > 0) badge.classList.add('critical-balls');
+        else badge.classList.remove('critical-balls');
     }
 
     const getLX = (r, c) => (c * RADIUS * 2) + RADIUS + (r % 2 ? RADIUS : 0) + (LOGICAL_WIDTH - COLS * RADIUS * 2) / 2;
@@ -307,7 +289,6 @@
             if (i <= unlockedLevel) div.onclick = () => startGame(i);
             gridEl.appendChild(div);
         }
-        // Menu só aparece no jogo
         document.getElementById('bottom-menu').classList.add('hidden');
     }
 
@@ -333,16 +314,12 @@
         AudioEngine.init();
         currentLevel = lvl; score = 0; isShooting = false; fallingBubbles = []; sparkles = [];
         remainingBalls = 30 + (Math.floor(lvl / 2) * 5);
-        
         document.getElementById('ui-current-lvl').innerText = lvl;
         document.getElementById('ui-score').innerText = '0';
         document.getElementById('map-screen').classList.add('hidden');
         document.getElementById('win-screen').classList.add('hidden');
         document.getElementById('lose-screen').classList.add('hidden');
-        
-        // Menu aparece apenas no jogo
         document.getElementById('bottom-menu').classList.remove('hidden');
-
         initLevelData(lvl);
         gameState = 'PLAYING';
         updatePreview();
@@ -363,18 +340,26 @@
     }
 
     function spawnShot() {
-        const activeTypes = [...new Set(grid.flat().filter(f => f).map(f => f.type))];
-        if (activeTypes.length === 0 && fallingBubbles.length === 0) { winGame(); return; }
+        const activeBubblesInGrid = grid.flat().filter(f => f);
         
-        if (remainingBalls <= 0) {
-            gameOver("CARTÃO VERMELHO 🟥");
+        // Só ganha se não houver mais nada no grid E não houver animações pendentes
+        if (activeBubblesInGrid.length === 0 && fallingBubbles.length === 0 && sparkles.length === 0) {
+            winGame();
+            return;
+        }
+        
+        if (remainingBalls <= 0 && !isShooting) {
+            // Pequeno delay para checar se a última bola lançada limpou o grid
+            setTimeout(() => {
+                if (grid.flat().filter(f => f).length > 0) gameOver("CARTÃO VERMELHO 🟥");
+            }, 800);
             return;
         }
 
         currentBubble = new Bubble(LOGICAL_WIDTH/2, LOGICAL_HEIGHT - 80, nextSymbol);
+        const activeTypes = [...new Set(activeBubblesInGrid.map(f => f.type))];
         const pool = activeTypes.length > 0 ? activeTypes : CRYPTO_CONFIG.map(c => c.symbol);
         nextSymbol = pool[Math.floor(Math.random() * pool.length)];
-        
         updatePreview(); 
         isShooting = false;
     }
@@ -388,24 +373,20 @@
         updatePreview();
     }
 
-    // Função de Recompensa (Propaganda)
     function showRewardAd() {
         if (gameState !== 'PLAYING') return;
-        
         const overlay = document.getElementById('ad-overlay');
         const timerText = document.getElementById('ad-timer');
         overlay.classList.remove('hidden');
-        
         let timeLeft = 5;
         timerText.innerText = timeLeft;
-        
         const interval = setInterval(() => {
             timeLeft--;
             timerText.innerText = timeLeft;
             if (timeLeft <= 0) {
                 clearInterval(interval);
                 overlay.classList.add('hidden');
-                remainingBalls += 3; // Ganha 3 bolas
+                remainingBalls += 3;
                 updatePreview();
                 createMilestoneMessage("+3 BOLAS!");
                 AudioEngine.cashRegister();
@@ -457,16 +438,15 @@
             matches.forEach(([r, c], i) => {
                 setTimeout(() => { 
                     if(grid[r][c]) {
+                        createSparkles(grid[r][c].x, grid[r][c].y, grid[r][c].config.color);
                         createFloatingScore(grid[r][c].x, grid[r][c].y, 10);
                         grid[r][c] = null; 
                         AudioEngine.match(); 
                     }
                 }, i * 40);
             });
-
             if (matches.length >= 6) createMilestoneMessage("UMA MÁQUINA");
             else if (matches.length >= 5) createMilestoneMessage("GOOOOLLLLLLL");
-
             score += matches.length * 10;
             setTimeout(() => {
                 const connected = new Set();
@@ -480,7 +460,6 @@
                         }
                     });
                 }
-                
                 let fallCount = 0;
                 for (let r = 0; r < ROWS; r++) {
                     for (let c = 0; c < COLS; c++) {
@@ -493,23 +472,21 @@
                         }
                     }
                 }
-                
-                if (fallCount > 5) {
-                    createMilestoneMessage("GOOOOLLL!");
-                    AudioEngine.cashRegister(); 
-                }
+                if (fallCount > 5) { createMilestoneMessage("GOOOOLLL!"); AudioEngine.cashRegister(); }
                 document.getElementById('ui-score').innerText = score;
                 spawnShot();
-            }, matches.length * 45);
+            }, matches.length * 45 + 100);
         } else {
             AudioEngine.impact();
             if (bestR >= ROWS - 2) {
-                gameOver("Você está fora!");
+                // Pequeno delay para o jogador ver a bola encostando no fundo antes da derrota
+                setTimeout(() => gameOver("Você está fora!"), 500);
             } else { spawnShot(); }
         }
     }
 
     function gameOver(reason) {
+        if (gameState !== 'PLAYING') return;
         gameState = 'LOSE';
         document.getElementById('lose-reason').innerText = reason;
         document.getElementById('lose-screen').classList.remove('hidden');
@@ -530,10 +507,7 @@
         AudioEngine.win();
     }
 
-    function nextLevel() {
-        if (currentLevel < 12) startGame(currentLevel + 1);
-        else backToMap();
-    }
+    function nextLevel() { if (currentLevel < 12) startGame(currentLevel + 1); else backToMap(); }
 
     function createSparkles(x, y, color) {
         for(let i=0; i<8; i++) {
@@ -561,15 +535,10 @@
         for (let i = fallingBubbles.length - 1; i >= 0; i--) {
             const b = fallingBubbles[i];
             b.vy += 0.8; b.x += b.vx; b.y += b.vy;
-
             if (b.y + RADIUS > LOGICAL_HEIGHT) {
-                b.y = LOGICAL_HEIGHT - RADIUS; 
-                b.vy *= -0.5; 
-                b.vx *= 0.8;
-                
+                b.y = LOGICAL_HEIGHT - RADIUS; b.vy *= -0.5; b.vx *= 0.8;
                 if (Math.abs(b.vy) > 1.5) {
-                    AudioEngine.coin(); 
-                    score += 2; 
+                    AudioEngine.coin(); score += 2; 
                     document.getElementById('ui-score').innerText = score;
                     createFloatingScore(b.x, b.y - 20, 2, true); 
                     createSparkles(b.x, b.y, b.config.color); 
@@ -581,10 +550,12 @@
             }
             if (Math.abs(b.vy) < 0.5 && b.y > LOGICAL_HEIGHT - RADIUS - 5) {
                 fallingBubbles.splice(i, 1);
-                if (grid.flat().filter(v => v).length === 0 && fallingBubbles.length === 0 && !isShooting) {
-                    winGame();
-                }
             }
+        }
+
+        // Verificação extra para o caso de ganhar na última bola caída
+        if (gameState === 'PLAYING' && !isShooting && grid.flat().filter(v => v).length === 0 && fallingBubbles.length === 0 && sparkles.length === 0) {
+            winGame();
         }
 
         if (gameState !== 'PLAYING') return;
@@ -615,32 +586,21 @@
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         if (gameState === 'MAP') return;
-        
         const rect = canvas.getBoundingClientRect();
         const scX = rect.width / LOGICAL_WIDTH;
         const scY = rect.height / LOGICAL_HEIGHT;
-
         ctx.save();
-        if (shakeAmount > 0.1) {
-            ctx.translate((Math.random() - 0.5) * shakeAmount, (Math.random() - 0.5) * shakeAmount);
-        }
-
+        if (shakeAmount > 0.1) ctx.translate((Math.random() - 0.5) * shakeAmount, (Math.random() - 0.5) * shakeAmount);
         if (isDragging && !isShooting) {
             ctx.save();
             let bX = currentBubble.x, bY = currentBubble.y;
             let dX = Math.cos(smoothAimAngle), dY = Math.sin(smoothAimAngle);
-            
             ctx.shadowBlur = 10 + Math.sin(laserPulse) * 4;
-            ctx.shadowColor = "white";
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+            ctx.shadowColor = "white"; ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
             ctx.lineWidth = 4 + Math.sin(laserPulse) * 1.5;
-            
-            ctx.beginPath();
-            ctx.moveTo(bX * scX, bY * scY);
-
+            ctx.beginPath(); ctx.moveTo(bX * scX, bY * scY);
             for(let i=0; i<40; i++) {
-                bX += dX * 15; 
-                bY += dY * 15;
+                bX += dX * 15; bY += dY * 15;
                 if (bX < RADIUS || bX > LOGICAL_WIDTH - RADIUS) dX *= -1;
                 let laserHit = false;
                 for (let r = 0; r < ROWS; r++) {
@@ -655,28 +615,17 @@
                 ctx.lineTo(bX * scX, bY * scY);
                 if (laserHit || bY < UI_HEIGHT) break;
             }
-            ctx.stroke();
-            ctx.shadowBlur = 0;
-            ctx.strokeStyle = "white";
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
+            ctx.stroke(); ctx.shadowBlur = 0; ctx.strokeStyle = "white"; ctx.lineWidth = 1.5; ctx.stroke();
             ctx.restore();
         }
-
         grid.flat().forEach(b => b && b.draw(scX, scY));
         fallingBubbles.forEach(b => b.draw(scX, scY));
-        
         sparkles.forEach(s => {
-            ctx.fillStyle = s.color;
-            ctx.globalAlpha = s.life;
-            ctx.beginPath();
-            ctx.arc(s.x * scX, s.y * scY, 4 * scX, 0, Math.PI*2);
-            ctx.fill();
+            ctx.fillStyle = s.color; ctx.globalAlpha = s.life;
+            ctx.beginPath(); ctx.arc(s.x * scX, s.y * scY, 4 * scX, 0, Math.PI*2); ctx.fill();
         });
         ctx.globalAlpha = 1.0;
-
         if (currentBubble && gameState === 'PLAYING') currentBubble.draw(scX, scY);
-        
         ctx.restore();
     }
 
@@ -698,11 +647,8 @@
     };
     const end = () => {
         if (!isDragging) return;
-        isDragging = false; 
-        isShooting = true;
-        remainingBalls--; 
-        updatePreview();
-        
+        isDragging = false; isShooting = true;
+        remainingBalls--; updatePreview();
         currentBubble.vx = Math.cos(smoothAimAngle) * 22;
         currentBubble.vy = Math.sin(smoothAimAngle) * 22;
         AudioEngine.shoot();
@@ -730,16 +676,6 @@
     loadResources();
     loop();
 </script>
-
-
-
-
-
-
-
-
-
-
 
 
     
