@@ -221,24 +221,7 @@
 
 
 
-const LEVELS = [
-    { flag: '🇦🇷', name: 'Argentina' },
-    { flag: '🇫🇷', name: 'França' },
-    { flag: '🇩🇪', name: 'Alemanha' },
-    { flag: '🇪🇸', name: 'Espanha' },
-    { flag: '🇮🇹', name: 'Itália' },
-    { flag: '🇧🇷', name: 'Brasil' },
-    { flag: '🇫🇷', name: 'França' },
-    { flag: '🇧🇷', name: 'Brasil' },
-    { flag: '🇩🇪', name: 'Alemanha' },
-    { flag: '🇦🇷', name: 'Argentina' },
-    { flag: '🇮🇹', name: 'Itália' },
-    { flag: '🇧🇷', name: 'Brasil' }
-];
 
-const MAX_LEVEL = LEVELS.length;
-
-    
 
 
 
@@ -874,41 +857,6 @@ const MAX_LEVEL = LEVELS.length;
 
 
 
-
-
-// mantém seu código original acima sem alteração...
-
-function renderMap() {
-    const gridEl = document.getElementById('levels-grid');
-    gridEl.innerHTML = '';
-
-    for (let i = 0; i < LEVELS.length; i++) {
-        const div = document.createElement('div');
-
-        // 🔥 MOSTRA BANDEIRA
-        div.innerText = LEVELS[i].flag;
-
-        // tooltip com nome do país
-        div.title = LEVELS[i].name;
-
-        // lógica de estado
-        const lvlNumber = i + 1;
-        div.className = `level-node ${
-            lvlNumber < unlockedLevel ? 'completed' :
-            lvlNumber === unlockedLevel ? 'unlocked' : 'locked'
-        }`;
-
-        // clique
-        if (lvlNumber <= unlockedLevel) {
-            div.onclick = () => startGame(lvlNumber);
-        }
-
-        gridEl.appendChild(div);
-    }
-
-    document.getElementById('bottom-menu').classList.add('hidden');
-}
-</script>
 
 
 
