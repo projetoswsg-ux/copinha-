@@ -7,6 +7,24 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/projetoswsg-ux/memezec@main/style.css">
     
+    <style>   /* TELA DE MAPA - OTIMIZADA PARA RETRATO */
+        #map-screen {
+            flex: 1;
+            /* Imagem de campo de futebol em perspectiva vertical (Portrait) */
+            background-image: 
+                linear-gradient(to bottom, rgba(11, 14, 17, 0.9), rgba(11, 14, 17, 0.4), rgba(11, 14, 17, 0.9)),
+                url('https://images.unsplash.com/photo-1522778119026-d647f0596c20?q=80&w=1000&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center bottom;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 40px;
+        }
+</style>
+    
 </head>
 <body>
 
