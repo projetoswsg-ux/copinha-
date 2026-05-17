@@ -5,442 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>WORLD CHAMPIONS</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/projetoswsg-ux/memezec@main/style.css">
- 
-    <style>
-        #map-screen {
-            background: #2d5a27;
-            background-image: 
-                linear-gradient(rgba(255,255,255,0.1) 2px, transparent 2px),
-                linear-gradient(90deg, rgba(255,255,255,0.1) 2px, transparent 2px);
-            background-size: 50px 50px;
-            position: relative;
-            overflow-y: auto;
-            padding-bottom: 100px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .grass-pattern {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 160%;
-            background: repeating-linear-gradient(
-                #2d5a27,
-                #2d5a27 60px,
-                #34692e 60px,
-                #34692e 120px
-            );
-            z-index: -1;
-        }
-
-        .field-lines {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            border: 4px solid rgba(255,255,255,0.2);
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        /* Caminho de evolução em S */
-        .levels-journey {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 40px;
-            padding: 40px 20px;
-            z-index: 10;
-            position: relative;
-            width: 100%;
-        }
-
-        .level-node-custom {
-            width: 75px;
-            height: 75px;
-            border-radius: 50%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            cursor: pointer;
-            box-shadow: 0 8px 15px rgba(0,0,0,0.4);
-            border: 4px solid #fff;
-            background: #1a1a1a;
-        }
-
-        .level-node-custom.unlocked {
-            background: #f0b90b;
-            transform: scale(1.1);
-            animation: pulse-node 2s infinite;
-        }
-
-        .level-node-custom.completed { background: #0ecb81; }
-        .level-node-custom.locked {
-            background: #333;
-            opacity: 0.6;
-            filter: grayscale(1);
-            cursor: not-allowed;
-            border-color: #555;
-        }
-
-        .node-flag { font-size: 28px; line-height: 1; }
-        .node-name { 
-            font-size: 10px; 
-            font-weight: 900; 
-            color: white; 
-            text-transform: uppercase;
-            position: absolute;
-            bottom: -22px;
-            white-space: nowrap;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-        }
-
-        @keyframes pulse-node {
-            0% { box-shadow: 0 0 0 0 rgba(240, 185, 11, 0.7); }
-            70% { box-shadow: 0 0 0 15px rgba(240, 185, 11, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(240, 185, 11, 0); }
-        }
-
-        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
-
-        :root {
-            --bg-dark: #0b0e11;
-        }
-
-        body, html {
-            margin: 0; padding: 0;
-            width: 100%; height: 100%;
-            overflow: hidden;
-            font-family: 'Fredoka One', cursive;
-            background-color: var(--bg-dark);
-            user-select: none;
-            touch-action: none;
-            color: white;
-        }
-
-        #game-wrapper { 
-            position: relative; 
-            width: 100%; 
-            height: 100%; 
-            background-image: url('https://cdn.jsdelivr.net/gh/projetoswsg-ux/memezec@71d3023a7172e283eb59e6d3159d54f0b4b019a9/estadio1.webp');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            transition: background-image 0.5s ease-in-out;
-        }
-
-        #game-wrapper::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(to right, 
-                rgba(240, 185, 11, 0.3) 0%, 
-                rgba(240, 185, 11, 0) 15%, 
-                rgba(240, 185, 11, 0) 85%, 
-                rgba(240, 185, 11, 0.3) 100%
-            );
-            pointer-events: none;
-            z-index: 5;
-        }
-        
-        canvas { 
-            display: block; 
-            width: 100%; 
-            height: 100%; 
-            position: relative;
-            z-index: 1;
-        }
-
-        .overlay-screen { 
-            position: absolute; 
-            inset: 0; 
-            background: rgba(11, 14, 17, 0.95); 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            z-index: 1000; 
-            backdrop-filter: blur(8px); 
-            text-align: center;
-        }
-        .hidden { display: none !important; }
-
-        .levels-grid { 
-            display: grid; 
-            grid-template-columns: repeat(3, 1fr); 
-            gap: 20px; 
-            padding: 20px; 
-            max-width: 400px; 
-        }
-        
-        .level-node {
-            width: 70px; height: 70px; border-radius: 18px; border: 2px solid #2b2f36;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.5rem; color: #848e9c; cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-            transition: all 0.2s;
-            background: #1e2329;
-        }
-        .level-node:active { transform: scale(0.9); }
-        .level-node.unlocked { border-color: #f0b90b; color: #f0b90b; background: rgba(240, 185, 11, 0.1); }
-        .level-node.completed { background: #0ecb81; border-color: #0ecb81; color: white; }
-        .level-node.locked { opacity: 0.3; cursor: not-allowed; }
-
-        .btn-crypto { 
-            background: #f0b90b; 
-            color: #0b0e11; padding: 14px 30px; border-radius: 12px; 
-            font-weight: bold; cursor: pointer; font-size: 1.1rem;
-            box-shadow: 0 4px 15px rgba(240, 185, 11, 0.3);
-            transition: transform 0.2s;
-            width: 220px;
-        }
-        .btn-crypto:active { transform: scale(0.95); }
-
-        .btn-secondary {
-            background: #2b2f36;
-            color: #eaecef;
-            padding: 14px 30px; border-radius: 12px;
-            font-weight: bold; cursor: pointer; font-size: 1.1rem;
-            border: 1px solid #474d57;
-            transition: all 0.2s;
-            width: 220px;
-        }
-        .btn-secondary:active { transform: scale(0.95); }
-        
-        .header-ui { 
-            position: absolute; 
-            top: 0; 
-            left: 0;
-            width: 100%; 
-            padding: 10px 20px; 
-            display: flex; 
-            justify-content: space-between; 
-            z-index: 100; 
-            background: rgba(0, 156, 59, 0.9);
-            border-bottom: 2px solid #474d57;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
-        .ui-badge { 
-            color: white;
-            font-size: 1rem;
-            text-shadow: 1px 1px 2px black;
-        }
-
-        .swap-control {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 6px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: absolute; right: 25px; bottom: 35px; 
-            width: 85px; height: 85px;
-            z-index: 50;
-            background: rgba(255, 255, 255, 0.1); 
-            backdrop-filter: blur(12px);          
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.2); 
-            border-radius: 24px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .swap-control:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: scale(1.05);
-            border: 1px solid rgba(255, 255, 255, 0.4);
-        }
-
-        #next-crypto-preview { font-size: 40px; display: flex; align-items: center; justify-content: center; }
-
-        .reverse-icon {
-            position: absolute; top: -10px; right: -10px;
-            background: #f0b90b; width: 28px; height: 28px;
-            border-radius: 50%; display: flex; align-items: center; justify-content: center;
-        }
-        .reverse-icon svg {
-            filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.3));
-        }
-
-        #loading-screen {
-            position: absolute; inset: 0; background: #0b0e11;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 2000;
-        }
-
-        @keyframes floating-text {
-            0% { transform: translateY(0) scale(0.5); opacity: 0; }
-            20% { transform: translateY(-20px) scale(1.5); opacity: 1; }
-            100% { transform: translateY(-100px) scale(1); opacity: 0; }
-        }
-
-        .floating-score {
-            position: absolute;
-            pointer-events: none;
-            color: #f0b90b;
-            font-size: 24px;
-            font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            z-index: 200;
-            animation: floating-text 1.2s ease-out forwards;
-        }
-
-        .bonus-float {
-            position: absolute;
-            pointer-events: none;
-            color: #00ffcc;
-            font-size: 28px;
-            font-weight: bold;
-            text-shadow: 0 0 10px #00ffcc;
-            z-index: 210;
-            animation: floating-text 0.8s ease-out forwards;
-        }
-
-        .milestone-msg {
-            position: absolute;
-            top: 40%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 50px;
-            font-weight: bold;
-            color: #0ecb81;
-            text-shadow: 0 0 20px rgba(14, 203, 129, 0.8);
-            pointer-events: none;
-            z-index: 250;
-            white-space: nowrap;
-            animation: floating-text 1s ease-in-out forwards;
-        }
-
-        /* Estilos do Menu Inferior estilo Telegram */
-        .tg-menu {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 40px;
-            background: rgba(0, 156, 59, 0.9);
-            backdrop-filter: blur(10px);
-            border-top: 1px solid rgba(240, 185, 11, 0.2);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            z-index: 100;
-            transition: transform 0.3s ease;
-        }
-
-        .tg-menu.hidden {
-            transform: translateY(100%);
-            display: none;
-        }
-
-        .menu-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            color: white;
-            font-size: 10px;
-            text-transform: uppercase;
-            font-weight: bold;
-        }
-
-        .menu-item.active { color: #f0b90b; }
-
-        .btn-add-ball {
-            position: relative;
-            width: 20px;
-            height: 20px;
-            background: white;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            box-shadow: 0 0 15px rgba(240, 185, 11, 0.4);
-            cursor: pointer;
-        }
-
-        #ad-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #000;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-        }
-
-        @keyframes pulse-red {
-            0% { transform: scale(1); color: #0b0e11; background-color: #f0b90b; }
-            50% { transform: scale(1.3); color: #fff; background-color: #f6465d; box-shadow: 0 0 15px #f6465d; }
-            100% { transform: scale(1); color: #0b0e11; background-color: #f0b90b; }
-        }
-
-        .critical-balls {
-            animation: pulse-red 0.6s infinite !important;
-        }
-
-        /* Créditos de Cinema */
-        .credits-container {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-        }
-
-        .credits-content {
-            position: absolute;
-            top: 100%;
-            text-align: center;
-            width: 80%;
-            animation: rollUp 15s linear forwards;
-        }
-
-        .credits-content .role {
-            color: #a0aec0;
-            font-size: 11px;
-            font-weight: bold;
-            letter-spacing: 0.2em;
-            text-transform: uppercase;
-            margin-top: 30px;
-            margin-bottom: 5px;
-        }
-
-        .credits-content .name {
-            color: #ffffff;
-            font-size: 18px;
-            font-weight: 900;
-            margin-bottom: 25px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-        }
-
-        @keyframes rollUp {
-            0% { top: 100%; }
-            100% { top: -120%; }
-        }
-    </style>
-
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/projetoswsg-ux/memezec@main/style.css">
+   <!-- INICIALIZAÇÃO DO SDK GAMEMONETIZE -->
     <script type="text/javascript">
         window.SDK_OPTIONS = {
-            gameId: "4kci7og3klgj0ivy2wz3gdvd9dth5e7n",
+            gameId: "4kci7og3klgj0ivy2wz3gdvd9dth5e7n", // Seu ID configurado automaticamente
             onEvent: function (a) {
                 switch (a.name) {
                     case "SDK_GAME_PAUSE":
+                        // Pausa o jogo e silencia o áudio quando o anúncio aparece
                         window.gameIsPausedBySDK = true;
                         if (window.AudioEngine && typeof window.AudioEngine.mute === 'function') {
                             window.AudioEngine.mute();
                         }
                         break;
                     case "SDK_GAME_START":
+                        // Retoma o jogo e o som quando o anúncio fecha
                         window.gameIsPausedBySDK = false;
                         if (window.AudioEngine && typeof window.AudioEngine.unmute === 'function') {
                             window.AudioEngine.unmute();
                         }
+                        // Se o anúncio foi chamado a partir de uma recompensa pendente, entrega as bolas
                         if (window.pendingReward) {
                             window.pendingReward();
                             window.pendingReward = null;
@@ -453,7 +38,7 @@
                         console.log("Erro no carregamento do SDK.");
                         window.gameIsPausedBySDK = false;
                         if (window.pendingReward) {
-                            window.pendingReward();
+                            window.pendingReward(); // Evita travar o prêmio caso dê erro de adblock
                             window.pendingReward = null;
                         }
                         break;
@@ -480,14 +65,13 @@
         <div class="ui-badge">SCORE: <span id="ui-score">0</span></div>
     </div>
 
-    <!-- TELA DO MAPA -->
     <div id="map-screen" class="overlay-screen hidden">
         <div class="grass-pattern"></div>
         <div class="field-lines"></div>
         
         <div class="relative z-10 py-8 text-center">
             <h1 class="text-[#f0b90b] text-4xl font-black italic tracking-tighter drop-shadow-lg uppercase">CHAMPIONS CUP</h1>
-            <p class="text-white text-[10px] font-bold opacity-70 uppercase tracking-[0.2em]">WORLD TOURNAMENT</p>
+            <p class="text-white text-[10px] font-bold opacity-70 uppercase tracking-[0.2em]">WORLD TOURNAMENT </p>
         </div>
 
         <div class="levels-journey" id="levels-grid"></div>
@@ -495,35 +79,6 @@
         <button onclick="resetProgress()" class="mt-8 mb-20 text-white/40 text-[10px] hover:text-white uppercase tracking-widest">CLEAR PROGRESS</button>
     </div>
 
-    <!-- TELA DE CRÉDITOS ESTILO CINEMA -->
-    <div id="credits-screen" class="overlay-screen hidden" style="background: black; overflow: hidden;">
-        <div class="credits-container">
-            <div class="credits-content">
-                <h1 class="text-[#f0b90b] text-4xl font-black italic mb-12">WORLD CHAMPIONS</h1>
-                
-                <p class="role">PRODUCED BY</p>
-                <p class="name">Seu Nome Ou Sua Empresa</p>
-
-                <p class="role">GAME DESIGNER & PROGRAMMER</p>
-                <p class="name">Seu Nome</p>
-
-                <p class="role">ART & UI DESIGN</p>
-                <p class="name">Tailwind CSS & Seus Memes</p>
-
-                <p class="role">SPECIAL THANKS</p>
-                <p class="name">GameMonetize SDK</p>
-                <p class="name">Todos os Jogadores</p>
-                
-                <div class="text-3xl mt-12">🏆 ⚽ 🥇</div>
-                <p class="text-gray-500 text-[10px] mt-4">© 2026 WORLD CHAMPIONS. ALL RIGHTS RESERVED.</p>
-            </div>
-        </div>
-        <button onclick="backToMap()" class="absolute bottom-6 right-6 bg-white/10 hover:bg-white/20 text-white text-xs px-4 py-2 rounded-full uppercase tracking-widest transition-all">
-            Skip ➔
-        </button>
-    </div>
-
-    <!-- TELA DE VITÓRIA -->
     <div id="win-screen" class="overlay-screen hidden">
         <div class="text-7xl mb-4">🏆</div>
         <h2 class="text-3xl text-[#0ecb81] mb-8">CONGRATULATIONS</h2>
@@ -533,7 +88,23 @@
         </div>
     </div>
 
-    <!-- TELA DE DERROTA -->
+    <!-- TELA DE CRÉDITOS (ADICIONADA ADAPTADA AO LAYOUT ORIGINAL) -->
+    <div id="credits-screen" class="overlay-screen hidden flex-col items-center justify-center text-center p-6">
+        <div class="text-6xl mb-4 animate-bounce">🥇</div>
+        <h2 class="text-4xl text-[#f0b90b] font-black italic tracking-tighter mb-2 uppercase drop-shadow-lg">WORLD CHAMPION!</h2>
+        <p class="text-white/80 text-xs tracking-widest uppercase mb-8">You have conquered the tournament</p>
+        
+        <div class="bg-black/40 border border-white/10 rounded-xl p-6 mb-8 w-64 backdrop-blur-sm">
+            <h3 class="text-[#0ecb81] text-xs font-bold tracking-widest uppercase mb-4">CREDITS</h3>
+            <p class="text-white text-sm font-bold mb-2">Game Design & Production</p>
+            <p class="text-white/60 text-xs mb-4">Your Name / Studio</p>
+            <p class="text-white text-sm font-bold mb-2">Development</p>
+            <p class="text-white/60 text-xs">World Champions Team</p>
+        </div>
+        
+        <button onclick="backToMap()" class="btn-crypto w-64">BACK TO MAP</button>
+    </div>
+
     <div id="lose-screen" class="overlay-screen hidden">
         <div class="text-7xl mb-4">😓</div>
         <h2 class="text-3xl text-[#f6465d] mb-8">IT'S OUT</h2>
@@ -551,6 +122,7 @@
             <canvas id="previewCanvas" width="50" height="50"></canvas>
             <div id="ball-count-badge" class="absolute -top-1 -right-1 bg-[#f0b90b] text-[#0b0e11] text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-[#0b0e11]">0</div>
         </div>
+        <span class="text-[9px] font-bold text-gray-400 mt-1 uppercase tracking-tighter"></span>
     </div>
 
     <!-- Menu Inferior MiniApp -->
@@ -561,7 +133,7 @@
                     <circle cx="12" cy="12" r="9" stroke="#0b0e11" fill="none"></circle>
                     <line x1="12" y1="8" x2="12" y2="16"></line>
                     <line x1="8" y1="12" x2="16" y2="12"></line>
-                </svg>
+                </</svg>
             </div>
             <span class="mt-1"></span>
         </div>
@@ -569,6 +141,7 @@
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" onclick="backToMap()"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z" /></svg>
             <span></span>
         </div>
+      
     </div>
 </div>
 
@@ -783,6 +356,7 @@
     }
 
     function startGame(lvl) {
+        // Chamada de anúncio intersticial de partida da GameMonetize
         if (typeof sdk !== 'undefined' && typeof sdk.showBanner === 'function') {
             sdk.showBanner();
         }
@@ -794,9 +368,145 @@
         document.getElementById('ui-score').innerText = '0';
         document.getElementById('map-screen').classList.add('hidden');
         document.getElementById('win-screen').classList.add('hidden');
+        document.getElementById('credits-screen').classList.add('hidden'); // Garante que fecha ao iniciar
         document.getElementById('lose-screen').classList.add('hidden');
         document.getElementById('bottom-menu').classList.remove('hidden');
-        // Suas lógicas adicionais de inicialização do grid de jogo entrariam aqui
+        initLevelData(lvl);
+        gameState = 'PLAYING';
+        updatePreview();
+    }
+
+    function initLevelData(lvl) {
+        grid = Array.from({length: ROWS}, () => Array(COLS).fill(null));
+        const rowsToFill = Math.min(4 + Math.floor(lvl/2), 10);
+        const symbols = CRYPTO_CONFIG.map(c => c.symbol);
+        for (let r = 0; r < rowsToFill; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (r % 2 !== 0 && c === COLS - 1) continue;
+                grid[r][c] = new Bubble(getLX(r, c), getLY(r), symbols[Math.floor(Math.random() * symbols.length)]);
+            }
+        }
+        nextSymbol = symbols[Math.floor(Math.random() * symbols.length)];
+        spawnShot();
+    }
+
+    function spawnShot() {
+        const activeTypes = [...new Set(grid.flat().filter(f => f).map(f => f.type))];
+        if (activeTypes.length === 0 && fallingBubbles.length === 0) { winGame(); return; }
+        if (remainingBalls <= 0) { gameOver("EXPULSION 🟥"); return; }
+        currentBubble = new Bubble(LOGICAL_WIDTH/2, LOGICAL_HEIGHT - 80, nextSymbol);
+        const pool = activeTypes.length > 0 ? activeTypes : CRYPTO_CONFIG.map(c => c.symbol);
+        nextSymbol = pool[Math.floor(Math.random() * pool.length)];
+        updatePreview(); isShooting = false;
+    }
+
+    function swapBubbles() {
+        if (isShooting || gameState !== 'PLAYING' || !currentBubble || window.gameIsPausedBySDK) return;
+        AudioEngine.swap();
+        const temp = currentBubble.type;
+        currentBubble = new Bubble(currentBubble.x, currentBubble.y, nextSymbol);
+        nextSymbol = temp;
+        updatePreview();
+    }
+
+    // MODIFICADO: Sistema de recompensa integrado ao SDK GameMonetize
+    function showRewardAd() {
+        if (gameState !== 'PLAYING' || window.gameIsPausedBySDK) return;
+        
+        // Define a ação que será executada quando o anúncio fechar com sucesso
+        window.pendingReward = function() {
+            remainingBalls += 3; 
+            updatePreview();
+            createMilestoneMessage("+3 BALLS!"); 
+            AudioEngine.cashRegister();
+        };
+
+        // Dispara o anúncio da GameMonetize
+        if (typeof sdk !== 'undefined' && typeof sdk.showBanner === 'function') {
+            sdk.showBanner();
+        } else {
+            // Fallback caso o adblock bloqueie completamente o script
+            console.log("SDK inacessível. Liberando recompensa automaticamente.");
+            window.pendingReward();
+            window.pendingReward = null;
+        }
+    }
+
+    function getNeighbors(r, c) {
+        const neighbors = [];
+        const offsets = r % 2 === 0 ? [[-1, -1], [-1, 0], [0, -1], [0, 1], [1, -1], [1, 0]] : [[-1, 0], [-1, 1], [0, -1], [0, 1], [1, 0], [1, 1]];
+        for (const [dr, dc] of offsets) {
+            const nr = r + dr, nc = c + dc;
+            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) neighbors.push([nr, nc]);
+        }
+        return neighbors;
+    }
+
+    function triggerImpact() {
+        let bestR = -1, bestC = -1, minDist = Infinity;
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (r % 2 !== 0 && c === COLS - 1) continue;
+                if (grid[r][c]) continue;
+                const d = Math.hypot(currentBubble.x - getLX(r, c), currentBubble.y - getLY(r));
+                if (d < minDist) { minDist = d; bestR = r; bestC = c; }
+            }
+        }
+        if (bestR === -1) { currentBubble = null; spawnShot(); return; }
+        const type = currentBubble.type;
+        grid[bestR][bestC] = new Bubble(getLX(bestR, bestC), getLY(bestR), type);
+        currentBubble = null;
+        const matches = []; const queue = [[bestR, bestC]]; const visited = new Set([`${bestR},${bestC}`]);
+        while(queue.length > 0) {
+            const [currR, currC] = queue.shift();
+            if (grid[currR][currC].type === type) {
+                matches.push([currR, currC]);
+                getNeighbors(currR, currC).forEach(([nr, nc]) => {
+                    if (!visited.has(`${nr},${nc}`) && grid[nr][nc] && grid[nr][nc].type === type) {
+                        visited.add(`${nr},${nc}`); queue.push([nr, nc]);
+                    }
+                });
+            }
+        }
+        if (matches.length >= 3) {
+            shakeAmount = Math.min(10, matches.length * 2);
+            matches.forEach(([r, c], i) => {
+                setTimeout(() => { 
+                    if(grid[r][c]) {
+                        createFloatingScore(grid[r][c].x, grid[r][c].y, 10);
+                        grid[r][c] = null; AudioEngine.match(); 
+                    }
+                }, i * 40);
+            });
+            if (matches.length >= 6) createMilestoneMessage("GOAT");
+            else if (matches.length >= 5) createMilestoneMessage("GOLLL");
+            score += matches.length * 10;
+            setTimeout(() => {
+                const connected = new Set(); const rootQ = [];
+                for (let c = 0; c < COLS; c++) if (grid[0][c]) { connected.add(`0,${c}`); rootQ.push([0, c]); }
+                while (rootQ.length > 0) {
+                    const [r, c] = rootQ.shift();
+                    getNeighbors(r, c).forEach(([nr, nc]) => {
+                        if (!connected.has(`${nr},${nc}`) && grid[nr][nc]) { connected.add(`${nr},${nc}`); rootQ.push([nr, nc]); }
+                    });
+                }
+                let fallCount = 0;
+                for (let r = 0; r < ROWS; r++) {
+                    for (let c = 0; c < COLS; c++) {
+                        if (grid[r][c] && !connected.has(`${r},${c}`)) {
+                            const b = grid[r][c]; b.vy = 2; b.vx = (Math.random() - 0.5) * 4;
+                            fallingBubbles.push(b); grid[r][c] = null;
+                            score += 20; AudioEngine.pop(); fallCount++;
+                        }
+                    }
+                }
+                if (fallCount > 5) { createMilestoneMessage("GOLLL"); AudioEngine.cashRegister(); }
+                document.getElementById('ui-score').innerText = score; spawnShot();
+            }, matches.length * 45);
+        } else {
+            AudioEngine.impact();
+            if (bestR >= ROWS - 2) gameOver("Você está fora!"); else spawnShot();
+        }
     }
 
     function gameOver(reason) {
@@ -808,6 +518,18 @@
 
     function winGame() {
         if (gameState !== 'PLAYING') return;
+        
+        // Verifica se completou a fase 12 (última fase)
+        if (currentLevel === 12) {
+            gameState = 'CREDITS';
+            if (unlockedLevel === 12) {
+                // Mantém desbloqueado mas não tenta subir para o nível 13 fictício
+                localStorage.setItem('crypto_shooter_lvl', 12);
+            }
+            showCredits();
+            return;
+        }
+
         gameState = 'WIN';
         if (currentLevel === unlockedLevel && unlockedLevel < 12) {
             unlockedLevel++; localStorage.setItem('crypto_shooter_lvl', unlockedLevel);
@@ -819,37 +541,151 @@
         AudioEngine.win();
     }
 
+    // NOVA FUNÇÃO: Ativa o display de créditos no fim da última fase
+    function showCredits() {
+        document.getElementById('credits-screen').classList.remove('hidden');
+        document.getElementById('bottom-menu').classList.add('hidden');
+        AudioEngine.win();
+    }
+
     function nextLevel() { 
         if (currentLevel < 12) {
             startGame(currentLevel + 1); 
         } else {
-            showGameCredits(); 
+            backToMap(); 
         } 
     }
 
-    function showGameCredits() {
-        gameState = 'CREDITS';
-        
-        document.getElementById('bottom-menu').classList.add('hidden');
-        document.getElementById('main-header').classList.add('hidden');
-        document.getElementById('win-screen').classList.add('hidden');
-        document.getElementById('lose-screen').classList.add('hidden');
-        
-        const creditsScreen = document.getElementById('credits-screen');
-        creditsScreen.classList.remove('hidden');
-        
-        const content = creditsScreen.querySelector('.credits-content');
-        content.style.animation = 'none';
-        content.offsetHeight; 
-        content.style.animation = 'rollUp 15s linear forwards';
+    function createSparkles(x, y, color) {
+        for(let i=0; i<8; i++) {
+            sparkles.push({
+                x, y, vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.5) * 10 - 5, life: 1.0, color
+            });
+        }
     }
 
+    function update() {
+        if (window.gameIsPausedBySDK) return; // Trava a física e lógica se o anúncio estiver na tela
+
+        laserPulse += 0.2; smoothAimAngle += (rawAimAngle - smoothAimAngle) * 0.15;
+        if (shakeAmount > 0) shakeAmount *= 0.9;
+        for(let i = sparkles.length-1; i >= 0; i--) {
+            const s = sparkles[i]; s.x += s.vx; s.y += s.vy; s.vy += 0.3; s.life -= 0.04;
+            if(s.life <= 0) sparkles.splice(i, 1);
+        }
+        for (let i = fallingBubbles.length - 1; i >= 0; i--) {
+            const b = fallingBubbles[i]; b.vy += 0.8; b.x += b.vx; b.y += b.vy;
+            if (b.y + RADIUS > LOGICAL_HEIGHT) {
+                b.y = LOGICAL_HEIGHT - RADIUS; b.vy *= -0.5; b.vx *= 0.8;
+                if (Math.abs(b.vy) > 1.5) {
+                    AudioEngine.coin(); score += 2; document.getElementById('ui-score').innerText = score;
+                    createFloatingScore(b.x, b.y - 20, 2, true); createSparkles(b.x, b.y, b.config.color);
+                    shakeAmount = Math.max(shakeAmount, 3);
+                }
+            }
+            if (b.x < RADIUS || b.x > LOGICAL_WIDTH - RADIUS) { b.vx *= -1; b.x = Math.max(RADIUS, Math.min(LOGICAL_WIDTH - RADIUS, b.x)); }
+            if (Math.abs(b.vy) < 0.5 && b.y > LOGICAL_HEIGHT - RADIUS - 5) {
+                fallingBubbles.splice(i, 1);
+                if (grid.flat().filter(v => v).length === 0 && fallingBubbles.length === 0 && !isShooting) winGame();
+            }
+        }
+        if (gameState !== 'PLAYING') return;
+        if (isShooting && currentBubble) {
+            const SUBSTEPS = 8;
+            for(let i=0; i<SUBSTEPS; i++) {
+                currentBubble.x += currentBubble.vx / SUBSTEPS; currentBubble.y += currentBubble.vy / SUBSTEPS;
+                if (currentBubble.x < RADIUS || currentBubble.x > LOGICAL_WIDTH - RADIUS) { currentBubble.vx *= -1; currentBubble.x = Math.max(RADIUS, Math.min(LOGICAL_WIDTH - RADIUS, currentBubble.x)); }
+                if (currentBubble.y < RADIUS + UI_HEIGHT) { triggerImpact(); return; }
+                let hit = false;
+                for (let r = 0; r < ROWS; r++) {
+                    for (let c = 0; c < COLS; c++) {
+                        if (grid[r][c] && Math.hypot(currentBubble.x - getLX(r, c), currentBubble.y - getLY(r)) < RADIUS * 1.6) { hit = true; break; }
+                    }
+                    if (hit) break;
+                }
+                if (hit) { triggerImpact(); return; }
+            }
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (gameState === 'MAP') return;
+        const rect = canvas.getBoundingClientRect();
+        const scX = rect.width / LOGICAL_WIDTH; const scY = rect.height / LOGICAL_HEIGHT;
+
+        ctx.save();
+        if (shakeAmount > 0.1) ctx.translate((Math.random() - 0.5) * shakeAmount, (Math.random() - 0.5) * shakeAmount);
+
+        if (isDragging && !isShooting && !window.gameIsPausedBySDK) {
+            ctx.save();
+            let bX = currentBubble.x, bY = currentBubble.y;
+            let dX = Math.cos(smoothAimAngle), dY = Math.sin(smoothAimAngle);
+            ctx.shadowBlur = 10 + Math.sin(laserPulse) * 4; ctx.shadowColor = "white";
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+            ctx.lineWidth = 4 + Math.sin(laserPulse) * 1.5;
+            ctx.beginPath(); ctx.moveTo(bX * scX, bY * scY);
+            for(let i=0; i<40; i++) {
+                bX += dX * 15; bY += dY * 15;
+                if (bX < RADIUS || bX > LOGICAL_WIDTH - RADIUS) dX *= -1;
+                let laserHit = false;
+                for (let r = 0; r < ROWS; r++) {
+                    for (let c = 0; c < COLS; c++) {
+                        if (grid[r][c] && Math.hypot(bX - getLX(r, c), bY - getLY(r)) < RADIUS * 1.5) { laserHit = true; break; }
+                    }
+                    if (laserHit) break;
+                }
+                ctx.lineTo(bX * scX, bY * scY);
+                if (laserHit || bY < UI_HEIGHT) break;
+            }
+            ctx.stroke(); ctx.strokeStyle = "white"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore();
+        }
+
+        grid.flat().forEach(b => b && b.draw(scX, scY));
+        fallingBubbles.forEach(b => b.draw(scX, scY));
+        sparkles.forEach(s => {
+            ctx.fillStyle = s.color; ctx.globalAlpha = s.life;
+            ctx.beginPath(); ctx.arc(s.x * scX, s.y * scY, 4 * scX, 0, Math.PI*2); ctx.fill();
+        });
+        ctx.globalAlpha = 1.0;
+        if (currentBubble && gameState === 'PLAYING') currentBubble.draw(scX, scY);
+        ctx.restore();
+    }
+
+    const getRel = (ex, ey) => {
+        const rect = canvas.getBoundingClientRect();
+        return { x: (ex - rect.left) * (LOGICAL_WIDTH / rect.width), y: (ey - rect.top) * (LOGICAL_HEIGHT / rect.height) };
+    };
+    const start = (e) => {
+        if (gameState !== 'PLAYING' || isShooting || !currentBubble || window.gameIsPausedBySDK) return;
+        isDragging = true;
+        const p = getRel(e.touches ? e.touches[0].clientX : e.clientX, e.touches ? e.touches[0].clientY : e.clientY);
+        rawAimAngle = Math.atan2(p.y - currentBubble.y, p.x - currentBubble.x);
+    };
+    const move = (e) => {
+        if (!isDragging || window.gameIsPausedBySDK) return;
+        const p = getRel(e.touches ? e.touches[0].clientX : e.clientX, e.touches ? e.touches[0].clientY : e.clientY);
+        rawAimAngle = Math.atan2(p.y - currentBubble.y, p.x - currentBubble.x);
+        rawAimAngle = Math.max(-Math.PI + 0.15, Math.min(-0.15, rawAimAngle));
+    };
+    const end = () => {
+        if (!isDragging || window.gameIsPausedBySDK) return;
+        isDragging = false; isShooting = true; remainingBalls--; updatePreview();
+        currentBubble.vx = Math.cos(smoothAimAngle) * 22; currentBubble.vy = Math.sin(smoothAimAngle) * 22;
+        AudioEngine.shoot();
+    };
+
+    canvas.addEventListener('mousedown', start);
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', end);
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); start(e); }, {passive:false});
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); move(e); }, {passive:false});
+    canvas.addEventListener('touchend', end);
+
     function backToMap() { 
-        document.getElementById('main-header').classList.remove('hidden');
-        document.getElementById('credits-screen').classList.add('hidden');
-        
         gameState = 'MAP'; 
         document.getElementById('win-screen').classList.add('hidden');
+        document.getElementById('credits-screen').classList.add('hidden');
         document.getElementById('lose-screen').classList.add('hidden');
         document.getElementById('map-screen').classList.remove('hidden'); 
         document.getElementById('bottom-menu').classList.add('hidden');
@@ -858,16 +694,6 @@
     
     function retryLevel() { startGame(currentLevel); }
     function resetProgress() { localStorage.setItem('crypto_shooter_lvl', 1); unlockedLevel = 1; renderMap(); }
-    
-    function update() {
-        // Insira os cálculos de física e movimentação do jogo aqui
-    }
-
-    function draw() {
-        ctx.clearRect(0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT);
-        // Insira os comandos de desenho do canvas aqui
-    }
-
     function loop() { update(); draw(); requestAnimationFrame(loop); }
     loadResources();
     loop();
